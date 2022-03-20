@@ -16,10 +16,11 @@ ggplot(data = data, aes(x = vel, y = ang, color = dist)) +
 
 ggsave("Crazyplot.png")
 
-subs <- subset(data, dist > 272)
+subs <- subset(data, dist == max(data)) # Get the higest point
 ggplot(data = subs, aes(x = vel, y = ang, color = dist)) + 
   geom_point() + # The way the plot should look
   labs(title = "The distance traveled corrosponding to angle and velocety",
        x = "Velocety at launch [m/s]",
        y = "Angle [degrees]"
   )
+

@@ -1,0 +1,124 @@
+---
+title: "The Oblique Throw"
+output:
+  html_document: default
+  pdf_document: default
+date: '2022-03-20'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+setwd("~/documents/scripting/fysss")
+
+library(readr)
+data <- read_csv("~/documents/scripting/fysss/data.csv", show_col_types = FALSE)
+
+```
+
+## What is the project about?
+
+When we throw a ball (ignoreing wind resistance) when the ball leaves our hand we know the only accselaration acting upon the ball is the gravatational constant. 
+
+## The simulations
+
+For the simulations i used the following equations to get the distance that the ball travelled
+
+<img src="equation.png" alt="drawing" width="300"/>
+
+Using this I wrote the following python code to simulate the throws
+
+```{python functionDefiniton}
+import math
+import sympy
+
+def calc_dist(v, a, h = 10):
+    """
+    Take in an velocety, angle and a height and calculate the distance it will travel
+    """
+    g = 9.82 # Gravatational constant
+    x = sympy.Symbol('x')
+    
+    # Left side of the equatoin
+    c1 = -1 * h
+    
+    # Right side of the equation
+    c2 = v * math.sin(math.radians(a)) * x - 1/2 * g * x**2 
+    
+    # Solve it, we can discard the negative solution
+    t = max(sympy.solve(sympy.Eq(c1, c2), (x,)))
+    s = v * math.cos(math.radians(a)) * t
+    
+    return s
+
+```
+
+Here is an example
+
+```{python simulations}
+print(calc_dist(15, 10), # Velocety: 15 m/s, angle: 10 degree
+      calc_dist(20, 15), # Velocety: 20 m/s, angle: 15 degree
+      calc_dist(5, 25)) # Velocety: 5 m/s, angle: 25 degree
+```
+
+I wrote a script to run this 22860 times but i wont go over that in this document, its linked as `main.py`
+
+## Visualising the data
+
+Lets first take at what type of data we are working with here 
+
+```{r summary}
+summary(data)
+```
+From taking a look at the summary we can see that the higest distance we reached was 272 meters with an avrige of 66
+
+```{r str}
+str(data)
+```
+From the str function we get a preview of our data and we find that we have 22860 datapoints
+
+Why not try and plot it?
+
+```{r plot1, echo=FALSE}
+library(ggplot2)
+
+ggplot(data = data, aes(x = vel, y = ang, color = dist)) +
+  geom_point() + # The way the plot should look
+  scale_colour_gradientn(colours = rainbow(6)) +
+  labs(title = "The distance traveled corrosponding to angle and velocety",
+       x = "Velocety at launch [m/s]",
+       y = "Angle [degrees]"
+  )
+
+```
+
+Now what can we do with this data?
+
+Lets try to isolate a range of distances and with this range we can also try to use a regression
+
+Here i got all the datapoints with a dist value between 99 and 100m
+
+```{r plot2, echo=FALSE}
+subs <- subset(data, dist <= 100 & dist >= 99) # Get the higest point
+ggplot(data = subs, aes(x = ang, y = vel)) +
+  geom_point() + # The way the plot should look
+  labs(title = "A slice of the above heatmap",
+       y = "Velocety at launch [m/s]",
+       x = "Angle [degrees]"
+  ) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2))
+```
+
+From that parabalae we find the fomula to be `f(x) = 0.01369*x²-1.14801*x+52.91235` with a r^2^ value of 0.975, so quite a nice fit
+
+My theroy is that we can calculate the top of the parabulae and find the optimal angle for all velocties when the height is 10
+
+```{r}
+a <- 0.01369 # To get the point we are looking for we only need the a and b constants
+b <- -1.14801
+
+print((-1*b)/(2*a)) # -b/2a
+```
+
+So the optimal angle for the oblique throw when the height is 10m would be 41.93 degree
+

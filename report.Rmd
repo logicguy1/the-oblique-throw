@@ -1,8 +1,8 @@
 ---
 title: "The Oblique Throw"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 date: '2022-03-20'
 ---
 
@@ -14,17 +14,21 @@ setwd("~/documents/scripting/fysss")
 library(readr)
 data <- read_csv("~/documents/scripting/fysss/data.csv", show_col_types = FALSE)
 
+library("tidyverse")
+
 ```
 
 ## What is the project about?
 
-When we throw a ball (ignoreing wind resistance) when the ball leaves our hand we know the only accselaration acting upon the ball is the gravatational constant. 
+When we throw a ball (ignoring wind resistance) we know the only acceleration acting upon the ball is the gravitational constant after it leaves our hand. 
 
 ## The simulations
 
-For the simulations i used the following equations to get the distance that the ball travelled
+For the simulations I used the following equations to get the lenght travelled by the ball
 
-<img src="equation.png" alt="drawing" width="300"/>
+$t=solve(-h=v \cdot \sin(\alpha) \cdot x - \frac {1} {2} \cdot g \cdot x^2)$
+
+$s_0=v \cdot \cos(\alpha) \cdot t$
 
 Using this I wrote the following python code to simulate the throws
 
@@ -42,7 +46,7 @@ def calc_dist(v, a, h = 10):
     # Left side of the equatoin
     c1 = -1 * h
     
-    # Right side of the equation
+    # Left side of the equation
     c2 = v * math.sin(math.radians(a)) * x - 1/2 * g * x**2 
     
     # Solve it, we can discard the negative solution
@@ -61,16 +65,16 @@ print(calc_dist(15, 10), # Velocety: 15 m/s, angle: 10 degree
       calc_dist(5, 25)) # Velocety: 5 m/s, angle: 25 degree
 ```
 
-I wrote a script to run this 22860 times but i wont go over that in this document, its linked as `main.py`
+I wrote a script to run this 22860 times but I wont go over that in this document, its linked as `main.py`
 
 ## Visualising the data
 
-Lets first take at what type of data we are working with here 
+Lets first take a look at what type of data we are working with here 
 
 ```{r summary}
 summary(data)
 ```
-From taking a look at the summary we can see that the higest distance we reached was 272 meters with an avrige of 66
+From taking a look at the summary we can see that the higest distance we reached was 272 meters with an average of 66 meters
 
 ```{r str}
 str(data)
@@ -109,9 +113,16 @@ ggplot(data = subs, aes(x = ang, y = vel)) +
   geom_smooth(method = lm, formula = y ~ poly(x, 2))
 ```
 
+Here we got all points where the distance is between 100 and 99, 
+
 From that parabalae we find the fomula to be `f(x) = 0.01369*x²-1.14801*x+52.91235` with a r^2^ value of 0.975, so quite a nice fit
 
-My theroy is that we can calculate the top of the parabulae and find the optimal angle for all velocties when the height is 10
+My theroy is that we can calculate the top of the parabola and find the optimal angle for all velocities when the height is 10
+
+Using the formula we can find the x corodinate of the parabalae
+
+$T_x = \frac {-b} {2 \cdot a}$  
+
 
 ```{r}
 a <- 0.01369 # To get the point we are looking for we only need the a and b constants
@@ -120,5 +131,40 @@ b <- -1.14801
 print((-1*b)/(2*a)) # -b/2a
 ```
 
-So the optimal angle for the oblique throw when the height is 10m would be 41.93 degree
+So the optimal angle for the oblique throw if my theroy is right at a height of 10m would be 41.93 degree
+
+```{r}
+bestData <- data %>% # Find the optimal angle in the specified velocety
+  group_by(vel) %>%
+  mutate(x = max(dist)) %>%
+  mutate(bestAng = as.double(subset(data, dist == x)[2]))
+
+bestData <- bestData[!duplicated(bestData[c('vel')]), ] # Remove duplicates of velocety
+
+ggplot(data = bestData, aes(x = vel, y = bestAng)) +
+  geom_point() + # Create a pointplot
+  labs(title = "Plot over the best angle corrosponding to their velocety",
+       x = "Velocety at launch [m/s]",
+       y = "Best avaliable angle [degrees]"
+  ) +
+  geom_smooth(method = glm, formula = y ~ log(x))
+```
+
+So in fact we have a concave power function with the formula
+
+$f(x)=b\cdot x^a$
+
+Running a quick analasys on the data we can check the estimate we made erlier
+
+```{r}
+summary(bestData[,5])
+```
+
+As we can see the median is 41 dagree, and if we had more datapoints i belive that we would get closer to our calculated estimate of 41.93
+
+Tho it is worth mentioning that i was wrong in the angle being the same for all veloceties, as we can clearly see there is a concave power function developing, so the faster the speed the closer we will get to flattening out at arround 45 degree
+
+
+
+
 
